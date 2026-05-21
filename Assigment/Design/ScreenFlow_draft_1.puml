@@ -1,0 +1,31 @@
+@startuml
+!theme plain
+skinparam state {
+  BackgroundColor LightCyan
+  BorderColor DeepSkyBlue
+  FontName JetBrains Mono
+  FontSize 16
+  ArrowColor DimGray
+}
+
+[*] --> SplashScreen : Mở App
+state SplashScreen : Màn hình khởi động app
+note right of SplashScreen : Khởi tạo dữ liệu hệ thống
+
+SplashScreen --> HomeScreen : Tải xong Metadata
+
+HomeScreen --> DetailScreen : Chọn một mẫu Origami
+
+state "Kiểm tra File 3D (.glb)" as CheckDownload <<choice>>
+DetailScreen --> CheckDownload
+
+CheckDownload --> DownloadingState : Chưa tải
+DownloadingState --> 3DViewerScreen : Tải hoàn tất
+
+CheckDownload --> 3DViewerScreen : Đã tải sẵn
+
+3DViewerScreen --> CompletionScreen : Hoàn thành bước cuối
+3DViewerScreen --> HomeScreen : Nhấn Thoát
+
+CompletionScreen --> HomeScreen : Trở về Trang chủ
+@enduml
