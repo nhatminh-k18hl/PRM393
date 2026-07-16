@@ -43,7 +43,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final targetDir = provider.getModelDirectoryPath(widget.model.id);
 
     if (isDownloaded) {
-      _navigateToViewer(targetDir);
+      _navigateToViewer(provider.getActualBaseDir(widget.model.id));
     } else {
       setState(() {
         _isDownloading = true;
@@ -82,7 +82,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         for (final file in archive) {
           if (file.isFile) {
             final data = file.content as List<int>;
-            final outFile = File("$targetDir/${file.name}");
+            final outFile = File(Uri.decodeFull("$targetDir/${file.name}"));
             outFile.createSync(recursive: true);
             outFile.writeAsBytesSync(data);
           }
@@ -97,7 +97,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           setState(() {
             _isDownloading = false;
           });
-          _navigateToViewer(targetDir);
+          _navigateToViewer(provider.getActualBaseDir(widget.model.id));
         }
       } catch (e) {
         if (mounted) {

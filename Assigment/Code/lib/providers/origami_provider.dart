@@ -43,14 +43,43 @@ class OrigamiProvider with ChangeNotifier {
 
   bool isModelDownloaded(String id) {
     if (_appDocDirPath == null) return false;
-    final file = File("$_appDocDirPath/models/$id/steps.json");
-    return file.existsSync();
+    final baseDir = getActualBaseDir(id);
+    return File("$baseDir/steps.json").existsSync();
   }
 
   // Get path to specific model's subdirectory
   String getModelDirectoryPath(String id) {
     if (_appDocDirPath == null) return '';
-    return "$_appDocDirPath/models/$id";
+    return Uri.decodeFull("$_appDocDirPath/models/$id");
+  }
+
+  // Robust nested ZIP base directory path resolver
+  String getActualBaseDir(String origamiId) {
+    if (_appDocDirPath == null) return '';
+    final decodedPath = Uri.decodeFull("$_appDocDirPath/models/$origamiId");
+    final baseDir = Directory(decodedPath);
+    
+    if (!baseDir.existsSync()) return decodedPath;
+    
+    // If steps.json is directly here, this is the root
+    if (File("$decodedPath/steps.json").existsSync()) {
+      return decodedPath;
+    }
+    
+    // Otherwise, check if there is a nested subdirectory containing steps.json
+    try {
+      final entities = baseDir.listSync();
+      for (var entity in entities) {
+        if (entity is Directory) {
+          if (File("${entity.path}/steps.json").existsSync()) {
+            return entity.path; // Found the true nested root folder
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error finding actual base dir: $e");
+    }
+    return decodedPath; // Fallback
   }
 
   // Filtered and Sorted list
@@ -111,7 +140,8 @@ class OrigamiProvider with ChangeNotifier {
 
   Future<void> pruneModelCache(String origamiId) async {
     if (_appDocDirPath == null) return;
-    final dir = Directory("$_appDocDirPath/models/$origamiId");
+    final path = Uri.decodeFull("$_appDocDirPath/models/$origamiId");
+    final dir = Directory(path);
     try {
       if (await dir.exists()) {
         await dir.delete(recursive: true);
