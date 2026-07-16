@@ -1,0 +1,44 @@
+[
+  {
+    "id": "folding_paper_3x3",
+    "title": "3x3 Grid Matrix",
+    "description": "Learn how to divide a standard square paper into perfect thirds using the geometric 'S' method to build a baseline 3 by 3 grid consisting of 9 equal sections.",
+    "difficulty": "Beginner Origami",
+    "categories": ["Beginner Origami", "Folding Techniques"],
+    "preview_img": "folding_paper_3x3_thumb",
+    "materials": {
+      "paper_size": "15x15 cm (Square Paper)",
+      "paper_type": "Standard Origami Sheet",
+      "tools": ["Ruler", "Pencil"]
+    },
+    "download_url": "https://raw.githubusercontent.com/nhatminh-k18hl/PRM393/main/Assigment/Data/Upload_data/packages/folding_paper_3x3.zip"
+  },
+  {
+    "id": "rabbit_ear_fold",
+    "title": "Rabbit Ear Fold",
+    "description": "A fundamental origami base technique used to decrease flap width and form limbs or sharp points. Vital for intermediate modeling.",
+    "difficulty": "Beginner Origami",
+    "categories": ["Beginner Origami", "Folding Techniques"],
+    "preview_img": "rabbit_ear_fold_thumb",
+    "materials": {
+      "paper_size": "15x15 cm (Square Paper)",
+      "paper_type": "Standard Origami Sheet",
+      "tools": ["None"]
+    },
+    "download_url": "https://raw.githubusercontent.com/nhatminh-k18hl/PRM393/main/Assigment/Data/Upload_data/packages/rabbit_ear_fold.zip"
+  },
+  {
+    "id": "origami_shield_with_cross",
+    "title": "Knight Shield with Cross",
+    "description": "An exquisite medieval knight shield featuring an elegant cross embossed directly at the geometric center of the model.",
+    "difficulty": "Intermediate Origami",
+    "categories": ["Intermediate Origami", "Origami Decorations", "Modular Origami"],
+    "preview_img": "origami_shield_with_cross_thumb",
+    "materials": {
+      "paper_size": "20x20 cm (Large Square Paper)",
+      "paper_type": "Thick Craft Paper / Foil Paper",
+      "tools": ["Bone Folder (Dụng cụ miết nếp)"]
+    },
+    "download_url": "https://raw.githubusercontent.com/nhatminh-k18hl/PRM393/main/Assigment/Data/Upload_data/packages/origami_shield_with_cross.zip"
+  }
+]

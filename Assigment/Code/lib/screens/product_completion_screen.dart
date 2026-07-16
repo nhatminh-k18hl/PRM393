@@ -1,66 +1,39 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_settings_provider.dart';
 import 'dashboard_screen.dart';
-import 'practice_viewer_screen.dart'; // to reuse grid background and 3D painter
 
 class ProductCompletionScreen extends StatefulWidget {
   final String modelName;
+  final String modelDir;
 
   const ProductCompletionScreen({
     Key? key,
     required this.modelName,
+    required this.modelDir,
   }) : super(key: key);
 
   @override
   State<ProductCompletionScreen> createState() => _ProductCompletionScreenState();
 }
 
-class _ProductCompletionScreenState extends State<ProductCompletionScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _rotationController;
-
-  @override
-  void initState() {
-    super.initState();
-    // Continuous rotation for the 3D showcase model
-    _rotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 12),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _rotationController.dispose();
-    super.dispose();
-  }
-
-  void _backToHome() {
-    // Drop the route pointer back to the Home Dashboard view resetting navigation states
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      (route) => false,
-    );
-  }
-
+class _ProductCompletionScreenState extends State<ProductCompletionScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<AppSettingsProvider>(context);
+    final glbPath = "file://${widget.modelDir}/finish.glb";
 
     return Scaffold(
       body: Stack(
         children: [
-          // Background grid
+          // Background
           Positioned.fill(
             child: Container(
               color: settings.backgroundColor,
-              child: const CustomGridBackgroundLines(),
             ),
           ),
 
-          // Central viewport content
           SafeArea(
             child: Center(
               child: Padding(
@@ -68,47 +41,35 @@ class _ProductCompletionScreenState extends State<ProductCompletionScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Left Side: Large auto-rotating 3D model
+                    // Left Side: 3D model showcase
                     Expanded(
                       flex: 45,
                       child: Center(
-                        child: AnimatedBuilder(
-                          animation: _rotationController,
-                          builder: (context, child) {
-                            // Map vertical tilt slightly and let horizontal rotate continuously
-                            final double angleY = _rotationController.value * 2 * math.pi;
-                            const double angleX = -20 * math.pi / 180.0;
-
-                            return Container(
-                              width: 280,
-                              height: 280,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: settings.primaryColor.withOpacity(0.06),
-                                    blurRadius: 50,
-                                    spreadRadius: 10,
-                                  )
-                                ],
-                              ),
-                              child: CustomPaint(
-                                painter: Origami3DModelPainter(
-                                  paperColor: settings.paperColor,
-                                  rotX: angleX,
-                                  rotY: angleY,
-                                  step: 8, // finished crane model
-                                ),
-                              ),
-                            );
-                          },
+                        child: Container(
+                          width: 280,
+                          height: 280,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: settings.primaryColor.withOpacity(0.06),
+                                blurRadius: 50,
+                                spreadRadius: 10,
+                              )
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Flutter3DViewer(
+                              src: glbPath,
+                            ),
+                          ),
                         ),
                       ),
                     ),
 
                     const SizedBox(width: 40),
 
-                    // Right Side: Notice text, congratulations and home button
+                    // Right Side: Notice text & navigation
                     Expanded(
                       flex: 55,
                       child: Column(
@@ -151,9 +112,9 @@ class _ProductCompletionScreenState extends State<ProductCompletionScreen>
                           const SizedBox(height: 8),
                           Text(
                             'You have successfully folded the "${widget.modelName}". Keep practicing to master other traditional and modular models.',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.white70,
+                              color: settings.textColor.withOpacity(0.7),
                               height: 1.4,
                             ),
                           ),
@@ -164,21 +125,21 @@ class _ProductCompletionScreenState extends State<ProductCompletionScreen>
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.03),
+                              color: settings.textColor.withOpacity(0.03),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.white12, width: 0.8),
+                              border: Border.all(color: settings.textColor.withOpacity(0.12), width: 0.8),
                             ),
                             child: Row(
                               children: [
                                 Icon(Icons.info_outline, color: settings.primaryColor, size: 16),
                                 const SizedBox(width: 10),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
                                     "Màn hình hiển thị 3D, tính năng hiện đang phát triển.",
                                     style: TextStyle(
                                       fontStyle: FontStyle.italic,
                                       fontSize: 10.5,
-                                      color: Colors.white54,
+                                      color: settings.textColor.withOpacity(0.6),
                                     ),
                                   ),
                                 ),
@@ -200,7 +161,12 @@ class _ProductCompletionScreenState extends State<ProductCompletionScreen>
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              onPressed: _backToHome,
+                              onPressed: () {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                                  (route) => false,
+                                );
+                              },
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [

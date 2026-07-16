@@ -8,7 +8,7 @@ import 'screens/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Force orientation lock at boot time
+  // Force strict orientation lock (landscapeLeft & landscapeRight)
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
@@ -32,29 +32,30 @@ class Origami3DApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppSettingsProvider>(
       builder: (context, settings, child) {
+        final isLightTheme = settings.activeTheme == AppTheme.LIGHT_CLASSIC ||
+            settings.activeTheme == AppTheme.SEPIA_WARM;
+        
         return MaterialApp(
-          title: '3D OriMaster',
+          title: 'Origami 3D Master',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             useMaterial3: true,
             primaryColor: settings.primaryColor,
             scaffoldBackgroundColor: settings.backgroundColor,
-            // Dynamically apply selected font globally
             fontFamily: settings.currentFont,
             colorScheme: ColorScheme.fromSeed(
               seedColor: settings.primaryColor,
               primary: settings.primaryColor,
               background: settings.backgroundColor,
-              brightness: Brightness.dark,
+              brightness: isLightTheme ? Brightness.light : Brightness.dark,
             ),
             textTheme: Theme.of(context).textTheme.apply(
               fontFamily: settings.currentFont,
-              bodyColor: Colors.white,
-              displayColor: Colors.white,
+              bodyColor: settings.textColor,
+              displayColor: settings.textColor,
             ),
           ),
           home: const SplashScreen(),
-          // Wrap the entire app UI tree with the scaling engine
           builder: (context, widget) {
             if (widget == null) return const SizedBox.shrink();
             return LayoutScalingWrapper(
@@ -68,8 +69,6 @@ class Origami3DApp extends StatelessWidget {
   }
 }
 
-/// A custom scaling engine that adapts visual sizes globally.
-/// Wraps the root layout to dynamically size elements using [Transform.scale] and constraints.
 class LayoutScalingWrapper extends StatelessWidget {
   final double scale;
   final Widget child;
@@ -82,7 +81,6 @@ class LayoutScalingWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // If scale is 1.0 (default), pass direct child through to avoid transform overhead
     if (scale == 1.0) {
       return child;
     }
@@ -92,7 +90,6 @@ class LayoutScalingWrapper extends StatelessWidget {
         final double width = constraints.maxWidth;
         final double height = constraints.maxHeight;
 
-        // Calculate scaled dimensions to occupy full viewport
         final double scaledWidth = width / scale;
         final double scaledHeight = height / scale;
 

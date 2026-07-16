@@ -27,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
     _animationController.forward();
 
-    // Asynchronous delay of 2 seconds before navigating
+    // 2-second transition timer to Dashboard
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -54,6 +54,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     final settings = Provider.of<AppSettingsProvider>(context);
 
     return Scaffold(
+      backgroundColor: settings.backgroundColor,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -61,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             end: Alignment.bottomRight,
             colors: [
               settings.backgroundColor,
-              settings.backgroundColor.withRed((settings.backgroundColor.red + 20).clamp(0, 255)),
+              settings.backgroundColor.withRed((settings.backgroundColor.red + 15).clamp(0, 255)),
             ],
           ),
         ),
@@ -71,7 +72,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Minimalist vector origami crane
                 CustomPaint(
                   size: const Size(180, 180),
                   painter: OrigamiCranePainter(primaryColor: settings.primaryColor),
@@ -87,21 +87,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Fold the World in 3D',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.white70,
+                    color: settings.textColor.withOpacity(0.7),
                     letterSpacing: 1.5,
                   ),
                 ),
                 const SizedBox(height: 48),
-                // Gentle progress indicator
                 SizedBox(
                   width: 140,
                   height: 3,
                   child: LinearProgressIndicator(
-                    backgroundColor: Colors.white10,
+                    backgroundColor: settings.textColor.withOpacity(0.1),
                     valueColor: AlwaysStoppedAnimation<Color>(settings.primaryColor),
                   ),
                 ),
@@ -114,7 +113,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 }
 
-/// A premium custom geometric origami crane vector painter.
 class OrigamiCranePainter extends CustomPainter {
   final Color primaryColor;
 
@@ -127,7 +125,7 @@ class OrigamiCranePainter extends CustomPainter {
     final double h = size.height;
     final center = Offset(w / 2, h / 2);
 
-    // Left Wing (darker tint of primary)
+    // Left Wing
     paint.color = primaryColor.withOpacity(0.85);
     final leftWingPath = Path()
       ..moveTo(center.dx, center.dy)
@@ -136,7 +134,7 @@ class OrigamiCranePainter extends CustomPainter {
       ..close();
     canvas.drawPath(leftWingPath, paint);
 
-    // Right Wing (lighter tint of primary)
+    // Right Wing
     paint.color = primaryColor;
     final rightWingPath = Path()
       ..moveTo(center.dx, center.dy)
@@ -145,17 +143,17 @@ class OrigamiCranePainter extends CustomPainter {
       ..close();
     canvas.drawPath(rightWingPath, paint);
 
-    // Neck & Head (medium opacity)
+    // Neck & Head
     paint.color = primaryColor.withOpacity(0.7);
     final neckPath = Path()
       ..moveTo(center.dx, center.dy)
       ..lineTo(center.dx - w * 0.25, center.dy + h * 0.15)
-      ..lineTo(center.dx - w * 0.3, center.dy + h * 0.08) // beak fold
+      ..lineTo(center.dx - w * 0.3, center.dy + h * 0.08)
       ..lineTo(center.dx - w * 0.23, center.dy + h * 0.18)
       ..close();
     canvas.drawPath(neckPath, paint);
 
-    // Tail (low opacity)
+    // Tail
     paint.color = primaryColor.withOpacity(0.55);
     final tailPath = Path()
       ..moveTo(center.dx, center.dy)
@@ -164,7 +162,7 @@ class OrigamiCranePainter extends CustomPainter {
       ..close();
     canvas.drawPath(tailPath, paint);
 
-    // Body Center (Bright accent highlight)
+    // Body Center
     paint.color = primaryColor.withOpacity(0.95);
     final bodyPath = Path()
       ..moveTo(center.dx, center.dy - h * 0.2)

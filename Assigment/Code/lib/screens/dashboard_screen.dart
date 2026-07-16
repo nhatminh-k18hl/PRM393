@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/origami_provider.dart';
+import '../models/origami_model.dart';
 import 'product_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -16,18 +17,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isSettingsOpen = false;
   final TextEditingController _searchController = TextEditingController();
 
-  // The exact 19 categories specified
   final List<String> _categories = [
     "Beginner Origami",
-    "Easy Origami",
+    "Folding Techniques",
     "Intermediate Origami",
+    "Origami Decorations",
+    "Modular Origami",
+    "Easy Origami",
     "Holiday Origami",
     "Origami Animals",
     "Traditional Origami",
-    "Modular Origami",
     "Origami Boxes",
     "Origami Clothes",
-    "Origami Decorations",
     "Origami Stationery",
     "Origami Flowers",
     "Origami Food",
@@ -35,8 +36,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     "Origami Hearts",
     "Origami Stars",
     "Origami Toys",
-    "Origami Vehicles",
-    "Misc Origami"
+    "Origami Vehicles"
   ];
 
   @override
@@ -49,12 +49,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final settings = Provider.of<AppSettingsProvider>(context);
     final origamiData = Provider.of<OrigamiProvider>(context);
-    final filteredModels = origamiData.filteredModels;
+    final visibleModels = origamiData.visibleOrigamis;
 
     return Scaffold(
       body: Stack(
         children: [
-          // Background Matrix
+          // Background canvas
           Positioned.fill(
             child: Container(
               color: settings.backgroundColor,
@@ -62,7 +62,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Main Layout Content
+          // Main Layout
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -70,37 +70,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // Top Header Row
                 _buildHeader(settings, origamiData),
 
-                // Join Filter Controls Row (Downloaded Only toggle & Clear Filters)
+                // Join Filter Row: Downloaded Only and Xóa Lọc
                 _buildFilterControlsRow(settings, origamiData),
 
-                // Category Scrollable Row Banner (Multi-Tag Lane)
+                // Category scrollable lane
                 _buildCategoryBanner(settings, origamiData),
 
-                // Center Workspace: Discover Grid List
+                // Grid list
                 Expanded(
-                  child: filteredModels.isEmpty
-                      ? _buildEmptyState(settings)
-                      : GridView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            childAspectRatio: 1.45,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                          ),
-                          itemCount: filteredModels.length,
-                          itemBuilder: (context, index) {
-                            final model = filteredModels[index];
-                            return _buildModelCard(context, model, settings);
-                          },
-                        ),
+                  child: origamiData.isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : visibleModels.isEmpty
+                          ? _buildEmptyState(settings)
+                          : GridView.builder(
+                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                childAspectRatio: 1.45,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                              ),
+                              itemCount: visibleModels.length,
+                              itemBuilder: (context, index) {
+                                final model = visibleModels[index];
+                                return _buildModelCard(context, model, settings, origamiData);
+                              },
+                            ),
                 ),
               ],
             ),
           ),
 
           // Settings Blur Overlay & Sliding Drawer
-          if (_isSettingsOpen)
+          if (_isSettingsOpen) ...[
             Positioned.fill(
               child: GestureDetector(
                 onTap: () {
@@ -117,19 +119,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-
-          // Settings Slider Panel Drawer (Slide in from right)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
-            top: 0,
-            bottom: 0,
-            right: _isSettingsOpen ? 0 : -380,
-            child: GestureDetector(
-              onTap: () {}, // Prevent click-through from closing panel
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              top: 0,
+              bottom: 0,
+              right: 0,
               child: _buildSettingsDrawer(settings),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -140,7 +138,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
       child: Row(
         children: [
-          // Title
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -153,11 +150,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: settings.primaryColor,
                 ),
               ),
-              const Text(
+              Text(
                 'Discover & Fold',
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.white60,
+                  color: settings.textColor.withOpacity(0.6),
                   letterSpacing: 1.0,
                 ),
               ),
@@ -169,20 +166,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Container(
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
+                color: settings.textColor.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.12)),
+                border: Border.all(color: settings.textColor.withOpacity(0.12)),
               ),
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(fontSize: 13, color: Colors.white),
+                style: TextStyle(fontSize: 13, color: settings.textColor),
                 decoration: InputDecoration(
                   hintText: 'Search models...',
-                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, size: 18, color: Colors.white54),
+                  hintStyle: TextStyle(color: settings.textColor.withOpacity(0.4), fontSize: 13),
+                  prefixIcon: Icon(Icons.search, size: 18, color: settings.textColor.withOpacity(0.6)),
                   suffixIcon: origamiData.searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.close, size: 16, color: Colors.white54),
+                          icon: Icon(Icons.close, size: 16, color: settings.textColor.withOpacity(0.6)),
                           onPressed: () {
                             origamiData.setSearchQuery('');
                             _searchController.clear();
@@ -199,13 +196,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(width: 20),
-          // Gear Configuration Icon Button
+          // Settings button
           Material(
-            color: Colors.white.withOpacity(0.08),
+            color: settings.textColor.withOpacity(0.08),
             shape: const CircleBorder(),
             child: IconButton(
               icon: Icon(Icons.settings, color: settings.primaryColor, size: 20),
-              tooltip: 'Settings Config',
               onPressed: () {
                 setState(() {
                   _isSettingsOpen = true;
@@ -219,16 +215,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildFilterControlsRow(AppSettingsProvider settings, OrigamiProvider origamiData) {
-    // Shows clear button only if any tags are selected, downloaded filter is active, or search query is populated
-    final bool showClear = origamiData.selectedCategories.isNotEmpty ||
-        origamiData.filterDownloadedOnly ||
-        origamiData.searchQuery.isNotEmpty;
+    final bool isFilterActive = origamiData.selectedCategories.isNotEmpty ||
+        origamiData.searchQuery.isNotEmpty ||
+        origamiData.filterDownloadedOnly;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 4),
       child: Row(
         children: [
-          // "Downloaded Only" filter toggle
+          // Downloaded Only switch
           InkWell(
             onTap: () {
               origamiData.toggleDownloadedFilter();
@@ -240,12 +235,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               decoration: BoxDecoration(
                 color: origamiData.filterDownloadedOnly
                     ? settings.primaryColor.withOpacity(0.15)
-                    : Colors.white.withOpacity(0.04),
+                    : settings.textColor.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: origamiData.filterDownloadedOnly
                       ? settings.primaryColor
-                      : Colors.white12,
+                      : settings.textColor.withOpacity(0.12),
                   width: 0.8,
                 ),
               ),
@@ -254,7 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Icon(
                     origamiData.filterDownloadedOnly ? Icons.offline_pin : Icons.offline_pin_outlined,
-                    color: origamiData.filterDownloadedOnly ? settings.primaryColor : Colors.white60,
+                    color: origamiData.filterDownloadedOnly ? settings.primaryColor : settings.textColor.withOpacity(0.6),
                     size: 14,
                   ),
                   const SizedBox(width: 6),
@@ -262,7 +257,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     'Downloaded Only',
                     style: TextStyle(
                       fontSize: 11,
-                      color: origamiData.filterDownloadedOnly ? Colors.white : Colors.white60,
+                      color: origamiData.filterDownloadedOnly ? settings.textColor : settings.textColor.withOpacity(0.6),
                       fontWeight: origamiData.filterDownloadedOnly ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
@@ -270,15 +265,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-
           const SizedBox(width: 12),
-
-          // "Clear All Filters" (Xóa Lọc) fading action button
+          // Clear filters button (Xóa Lọc)
           AnimatedOpacity(
             duration: const Duration(milliseconds: 200),
-            opacity: showClear ? 1.0 : 0.0,
+            opacity: isFilterActive ? 1.0 : 0.0,
             child: IgnorePointer(
-              ignoring: !showClear,
+              ignoring: !isFilterActive,
               child: TextButton.icon(
                 onPressed: () {
                   origamiData.clearAllFilters();
@@ -286,7 +279,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 },
                 icon: const Icon(Icons.filter_alt_off, size: 14, color: Colors.redAccent),
                 label: const Text(
-                  'Clear All Filters (Xóa Lọc)',
+                  'Xóa Lọc (Clear All Filters)',
                   style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold),
                 ),
                 style: TextButton.styleFrom(
@@ -323,13 +316,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 cat,
                 style: TextStyle(
                   fontSize: 12,
-                  color: isSelected ? Colors.white : Colors.white70,
+                  color: isSelected ? Colors.white : settings.textColor.withOpacity(0.7),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
               selected: isSelected,
               selectedColor: settings.primaryColor,
-              backgroundColor: Colors.white.withOpacity(0.05),
+              backgroundColor: settings.textColor.withOpacity(0.05),
               checkmarkColor: Colors.white,
               onSelected: (selected) {
                 origamiData.toggleCategory(cat);
@@ -341,10 +334,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildModelCard(BuildContext context, OrigamiModel model, AppSettingsProvider settings) {
+  Widget _buildModelCard(BuildContext context, OrigamiModel model, AppSettingsProvider settings, OrigamiProvider origamiData) {
+    final isDownloaded = origamiData.isModelDownloaded(model.id);
+
     return GestureDetector(
       onTap: () {
-        // Render Product Detail overlay (Screen 3)
         showGeneralDialog(
           context: context,
           barrierDismissible: true,
@@ -372,12 +366,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white.withOpacity(0.06),
-              Colors.white.withOpacity(0.01),
+              settings.textColor.withOpacity(0.06),
+              settings.textColor.withOpacity(0.01),
             ],
           ),
           border: Border.all(
-            color: Colors.white.withOpacity(0.08),
+            color: settings.textColor.withOpacity(0.08),
             width: 1.0,
           ),
           boxShadow: [
@@ -392,99 +386,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Preview shape section
+            // Model preview representation
             Expanded(
               child: Container(
-                color: Colors.white.withOpacity(0.03),
+                color: settings.textColor.withOpacity(0.02),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // A rotating geometric triangle container representation
-                    RotationTransition(
-                      turns: const AlwaysStoppedAnimation(45 / 360),
-                      child: Container(
-                        width: 55,
-                        height: 55,
-                        decoration: BoxDecoration(
-                          color: model.previewColor.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(
-                              color: model.previewColor.withOpacity(0.3),
-                              blurRadius: 8,
-                              spreadRadius: 2,
-                            )
-                          ],
-                        ),
-                      ),
+                    Image.asset(
+                      "assets/images/${model.previewImg}.png",
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(Icons.token, size: 40, color: settings.primaryColor);
+                      },
                     ),
-                    
-                    // Rating indicator (Top Right)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star, color: Colors.amber, size: 12),
-                            const SizedBox(width: 3),
-                            Text(
-                              model.rating.toString(),
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Local storage / Download status badge (Top Left)
+                    // Checkmark or cloud download state badge
                     Positioned(
                       left: 8,
                       top: 8,
-                      child: GestureDetector(
-                        onTap: () async {
-                          // Simulates caching .glb files into getApplicationDocumentsDirectory()
-                          await Provider.of<OrigamiProvider>(context, listen: false)
-                              .toggleDownload(model.title);
-                          
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  model.isDownloaded 
-                                      ? "Removed cached GLB model" 
-                                      : "Saved model GLB into documents folder!",
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                                duration: const Duration(seconds: 1),
-                                behavior: SnackBarBehavior.floating,
-                                width: 300,
-                              ),
-                            );
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: model.isDownloaded ? Colors.greenAccent : Colors.white24,
-                              width: 0.8,
-                            ),
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDownloaded ? Colors.greenAccent : Colors.white24,
+                            width: 0.8,
                           ),
-                          child: Icon(
-                            model.isDownloaded ? Icons.offline_pin : Icons.cloud_download,
-                            color: model.isDownloaded ? Colors.greenAccent : Colors.white70,
-                            size: 13,
-                          ),
+                        ),
+                        child: Icon(
+                          isDownloaded ? Icons.offline_pin : Icons.cloud_download,
+                          color: isDownloaded ? Colors.greenAccent : Colors.white70,
+                          size: 13,
                         ),
                       ),
                     ),
@@ -502,10 +435,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     model.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: settings.textColor,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -520,11 +453,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const Text(
-                        "15x15 cm",
+                      Text(
+                        model.materials['paper_size'] ?? '15x15 cm',
                         style: TextStyle(
                           fontSize: 10,
-                          color: Colors.white38,
+                          color: settings.textColor.withOpacity(0.4),
                         ),
                       ),
                     ],
@@ -543,16 +476,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.search_off, size: 50, color: Colors.white24),
+          Icon(Icons.search_off, size: 50, color: settings.textColor.withOpacity(0.24)),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'No models found matching parameters',
-            style: TextStyle(color: Colors.white54, fontSize: 13),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Try switching categories or clearing queries',
-            style: TextStyle(color: Colors.white30, fontSize: 11),
+            style: TextStyle(color: settings.textColor.withOpacity(0.6), fontSize: 13),
           ),
         ],
       ),
@@ -560,55 +488,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSettingsDrawer(AppSettingsProvider settings) {
-    final List<Color> primaries = [
-      const Color(0xFFFF5722), // Terracotta
-      const Color(0xFF9C27B0), // Purple
-      const Color(0xFF009688), // Teal
-      const Color(0xFFE91E63), // Pink
-      const Color(0xFF2196F3), // Blue
-      const Color(0xFF4CAF50), // Green
-    ];
-
-    final List<Color> backgrounds = [
-      const Color(0xFF1E1E2C), // Dark Blue Grey
-      const Color(0xFF121212), // Pitch Black
-      const Color(0xFF1F1F1F), // Dark Slate
-      const Color(0xFF2D142C), // Dark Aubergine
-    ];
-
-    final List<Color> paperColors = [
-      const Color(0xFFFFCC80), // Orange Yellow
-      const Color(0xFFFFB7B2), // Soft Rose
-      const Color(0xFFB5EAD7), // Mint Green
-      const Color(0xFFE2F0CB), // Pastel Lime
-      const Color(0xFFC7CEEA), // Soft Lilac
-      const Color(0xFFFFFFFF), // Plain White
-    ];
-
     final List<String> fonts = ['Verdana', 'Courier New', 'Georgia'];
     final List<double> scales = [0.5, 0.75, 1.0, 1.25, 1.5];
 
     return Container(
       width: 360,
       decoration: BoxDecoration(
-        color: const Color(0xFF161622).withOpacity(0.95),
-        border: const Border(
-          left: BorderSide(color: Colors.white12, width: 1.0),
+        color: settings.backgroundColor.withOpacity(0.95),
+        border: Border(
+          left: BorderSide(color: settings.textColor.withOpacity(0.12), width: 1.0),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 20,
-            offset: const Offset(-5, 0),
-          )
-        ],
       ),
       child: SafeArea(
         left: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Drawer Header
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -618,18 +513,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Icon(Icons.tune, color: settings.primaryColor, size: 20),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Visual Settings',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: settings.textColor,
                         ),
                       ),
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                    icon: Icon(Icons.close, color: settings.textColor.withOpacity(0.6), size: 20),
                     onPressed: () {
                       setState(() {
                         _isSettingsOpen = false;
@@ -639,102 +534,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            const Divider(color: Colors.white12, height: 1),
-            // Settings Options List
+            const Divider(height: 1),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  // Primary theme color
-                  _buildSectionHeader('Theme Primary Color'),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: primaries.map((color) {
-                      final isSel = settings.primaryColor.value == color.value;
-                      return GestureDetector(
-                        onTap: () => settings.setPrimaryColor(color),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSel ? Colors.white : Colors.transparent,
-                              width: 2.0,
-                            ),
-                          ),
-                          child: isSel
-                              ? const Icon(Icons.check, color: Colors.white, size: 16)
-                              : null,
-                        ),
-                      );
-                    }).toList(),
+                  // AppTheme Options
+                  Text(
+                    'Theme Presets',
+                    style: TextStyle(fontSize: 11, color: settings.textColor.withOpacity(0.4), fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 20),
-
-                  // Background tint color
-                  _buildSectionHeader('App Background Tint'),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: backgrounds.map((color) {
-                      final isSel = settings.backgroundColor.value == color.value;
-                      return GestureDetector(
-                        onTap: () => settings.setBackgroundColor(color),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSel ? settings.primaryColor : Colors.white30,
-                              width: 2.0,
-                            ),
-                          ),
-                          child: isSel
-                              ? Icon(Icons.check, color: settings.primaryColor, size: 16)
-                              : null,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // 3D Model paper color
-                  _buildSectionHeader('3D Model Paper Simulation'),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: paperColors.map((color) {
-                      final isSel = settings.paperColor.value == color.value;
+                    children: AppTheme.values.map((theme) {
+                      final isSel = settings.activeTheme == theme;
                       return GestureDetector(
-                        onTap: () => settings.setPaperColor(color),
+                        onTap: () => settings.setTheme(theme),
                         child: Container(
-                          width: 36,
-                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSel ? settings.primaryColor : Colors.transparent,
-                              width: 2.5,
+                            color: isSel ? settings.primaryColor : settings.textColor.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: isSel ? settings.primaryColor : settings.textColor.withOpacity(0.12)),
+                          ),
+                          child: Text(
+                            theme.name.replaceAll('_', ' '),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                              color: isSel ? Colors.white : settings.textColor.withOpacity(0.8),
                             ),
                           ),
-                          child: isSel
-                              ? Icon(Icons.check, color: settings.primaryColor, size: 16)
-                              : null,
                         ),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 20),
 
-                  // Typography selection
-                  _buildSectionHeader('Typography Font Family'),
+                  // Typography Options
+                  Text(
+                    'Font Family',
+                    style: TextStyle(fontSize: 11, color: settings.textColor.withOpacity(0.4), fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   Column(
                     children: fonts.map((font) {
@@ -742,7 +585,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 6),
                         decoration: BoxDecoration(
-                          color: isSel ? settings.primaryColor.withOpacity(0.15) : Colors.white.withOpacity(0.03),
+                          color: isSel ? settings.primaryColor.withOpacity(0.1) : settings.textColor.withOpacity(0.03),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: isSel ? settings.primaryColor : Colors.transparent,
@@ -754,7 +597,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             font,
                             style: TextStyle(
                               fontFamily: font,
-                              color: Colors.white,
+                              color: settings.textColor,
                               fontSize: 13,
                               fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
                             ),
@@ -767,8 +610,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Layout scale percentage picker
-                  _buildSectionHeader('Global Layout Sizing Scale'),
+                  // Layout Scaling
+                  Text(
+                    'Global Zoom Scale',
+                    style: TextStyle(fontSize: 11, color: settings.textColor.withOpacity(0.4), fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: scales.map((scale) {
@@ -781,7 +627,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             height: 32,
                             margin: const EdgeInsets.symmetric(horizontal: 2),
                             decoration: BoxDecoration(
-                              color: isSel ? settings.primaryColor : Colors.white.withOpacity(0.04),
+                              color: isSel ? settings.primaryColor : settings.textColor.withOpacity(0.04),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             alignment: Alignment.center,
@@ -790,7 +636,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
-                                color: isSel ? Colors.white : Colors.white70,
+                                color: isSel ? Colors.white : settings.textColor.withOpacity(0.8),
                               ),
                             ),
                           ),
@@ -800,7 +646,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Reset defaults button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent.withOpacity(0.2),
@@ -825,37 +670,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 11,
-        color: Colors.white38,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 0.8,
-      ),
-    );
-  }
 }
 
-/// Custom abstract grid background to wow the user.
 class CustomGridBackground extends StatelessWidget {
   const CustomGridBackground({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: GridPainter(),
+      painter: GridPainter(color: Provider.of<AppSettingsProvider>(context).textColor.withOpacity(0.02)),
     );
   }
 }
 
 class GridPainter extends CustomPainter {
+  final Color color;
+  GridPainter({required this.color});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.02)
+      ..color = color
       ..strokeWidth = 1.0;
 
     const double step = 40.0;

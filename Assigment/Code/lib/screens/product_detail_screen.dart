@@ -1,24 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
+import 'package:archive/archive.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/origami_provider.dart';
+import '../models/origami_model.dart';
 import 'practice_viewer_screen.dart';
-
-class OrigamiMetadata {
-  final String dimensions;
-  final String texture;
-  final String tips;
-  final String estimatedTime;
-  final int totalSteps;
-
-  const OrigamiMetadata({
-    required this.dimensions,
-    required this.texture,
-    required this.tips,
-    required this.estimatedTime,
-    required this.totalSteps,
-  });
-}
 
 class ProductDetailScreen extends StatefulWidget {
   final OrigamiModel model;
@@ -30,35 +18,124 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  late Future<OrigamiMetadata> _metadataFuture;
+  bool _isLoadingSpecs = true;
+  double _downloadProgress = 0.0;
+  bool _isDownloading = false;
+  String _statusText = '';
 
   @override
   void initState() {
     super.initState();
-    _metadataFuture = _loadModelMetadata();
+    _simulateLoadingSpecs();
   }
 
-  // Simulate loading data asynchronously
-  Future<OrigamiMetadata> _loadModelMetadata() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
-    return const OrigamiMetadata(
-      dimensions: "15 x 15 cm",
-      texture: "Premium Washi Matte Paper (80g/m²)",
-      tips: "Ensure your paper is cut to an exact square. Keep initial valley-folds perfectly straight. Make sure corners align exactly before creasing.",
-      estimatedTime: "12 mins",
-      totalSteps: 8,
+  Future<void> _simulateLoadingSpecs() async {
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (mounted) {
+      setState(() {
+        _isLoadingSpecs = false;
+      });
+    }
+  }
+
+  Future<void> _handleContinue(OrigamiProvider provider) async {
+    final isDownloaded = provider.isModelDownloaded(widget.model.id);
+    final targetDir = provider.getModelDirectoryPath(widget.model.id);
+
+    if (isDownloaded) {
+      _navigateToViewer(targetDir);
+    } else {
+      setState(() {
+        _isDownloading = true;
+        _downloadProgress = 0.0;
+        _statusText = 'Connecting to server...';
+      });
+
+      try {
+        final zipPath = "$targetDir/package.zip";
+        final tempFile = File(zipPath);
+        if (!tempFile.parent.existsSync()) {
+          tempFile.parent.createSync(recursive: true);
+        }
+
+        final dio = Dio();
+        await dio.download(
+          widget.model.downloadUrl,
+          zipPath,
+          onReceiveProgress: (received, total) {
+            if (total != -1) {
+              setState(() {
+                _downloadProgress = received / total;
+                _statusText = 'Downloading package: ${(_downloadProgress * 100).toStringAsFixed(0)}%';
+              });
+            }
+          },
+        );
+
+        setState(() {
+          _statusText = 'Extracting resources...';
+        });
+
+        // Unpack ZIP
+        final bytes = tempFile.readAsBytesSync();
+        final archive = ZipDecoder().decodeBytes(bytes);
+        for (final file in archive) {
+          if (file.isFile) {
+            final data = file.content as List<int>;
+            final outFile = File("$targetDir/${file.name}");
+            outFile.createSync(recursive: true);
+            outFile.writeAsBytesSync(data);
+          }
+        }
+
+        // Delete temporary ZIP file
+        tempFile.deleteSync();
+
+        provider.refreshDownloadStatus();
+
+        if (mounted) {
+          setState(() {
+            _isDownloading = false;
+          });
+          _navigateToViewer(targetDir);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isDownloading = false;
+            _statusText = '';
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Download failed: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _navigateToViewer(String targetDir) {
+    Navigator.of(context).pop(); // dismiss detail modal
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PracticeViewerScreen(
+          modelId: widget.model.id,
+          modelName: widget.model.title,
+          modelDir: targetDir,
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<AppSettingsProvider>(context);
+    final origamiData = Provider.of<OrigamiProvider>(context);
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // transparent so background overlay dim is shown
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // Dismiss on tapping anywhere outside
+          // Dismiss on tapping outside
           Positioned.fill(
             child: GestureDetector(
               onTap: () => Navigator.of(context).pop(),
@@ -68,17 +145,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
 
-          // Central modal content container
+          // Central modal content
           Center(
             child: Container(
               width: 580,
               height: 330,
               margin: const EdgeInsets.symmetric(horizontal: 24),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E1E2C),
+                color: settings.backgroundColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.12),
+                  color: settings.textColor.withOpacity(0.12),
                   width: 1.5,
                 ),
                 boxShadow: [
@@ -92,25 +169,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               clipBehavior: Clip.antiAlias,
               child: Stack(
                 children: [
-                  // Inner contents
                   Row(
                     children: [
-                      // Left Column: Visual graphic & summary
+                      // Left Column: Visual summary
                       _buildLeftColumn(settings),
                       // Divider line
                       Container(
                         width: 1,
                         height: double.infinity,
-                        color: Colors.white.withOpacity(0.08),
+                        color: settings.textColor.withOpacity(0.08),
                       ),
-                      // Right Column: FutureBuilder info
+                      // Right Column: Info specs
                       Expanded(
-                        child: _buildRightColumn(settings),
+                        child: _buildRightColumn(settings, origamiData),
                       ),
                     ],
                   ),
 
-                  // Dedicated structural close button [X] inside the card
+                  // Close button [X] inside the card
                   Positioned(
                     top: 14,
                     left: 14,
@@ -138,30 +214,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return Container(
       width: 210,
       padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
-      color: Colors.black.withOpacity(0.12),
+      color: settings.textColor.withOpacity(0.04),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Geometric abstract visualization shape
           Center(
             child: Container(
               width: 90,
               height: 90,
               decoration: BoxDecoration(
-                color: widget.model.previewColor,
+                color: settings.primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.model.previewColor.withOpacity(0.35),
-                    blurRadius: 16,
-                  )
-                ],
+                border: Border.all(color: settings.primaryColor.withOpacity(0.3)),
               ),
-              child: const Icon(
-                Icons.token,
-                size: 38,
-                color: Colors.white,
+              child: Image.asset(
+                "assets/images/${widget.model.previewImg}.png",
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(Icons.token, size: 38, color: settings.primaryColor);
+                },
               ),
             ),
           ),
@@ -169,19 +241,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           Text(
             widget.model.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: settings.textColor,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            widget.model.category,
+            widget.model.difficulty,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              color: Colors.white38,
+              color: settings.primaryColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -190,160 +262,137 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildRightColumn(AppSettingsProvider settings) {
-    return FutureBuilder<OrigamiMetadata>(
-      future: _metadataFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(settings.primaryColor),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Reading blueprint specs...',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-              ],
+  Widget _buildRightColumn(AppSettingsProvider settings, OrigamiProvider provider) {
+    if (_isLoadingSpecs) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(settings.primaryColor),
             ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error loading metadata',
-              style: TextStyle(color: Colors.redAccent.shade100, fontSize: 13),
+            const SizedBox(height: 16),
+            Text(
+              'Reading blueprint specs...',
+              style: TextStyle(color: settings.textColor.withOpacity(0.6), fontSize: 12),
             ),
-          );
-        }
+          ],
+        ),
+      );
+    }
 
-        final data = snapshot.data!;
+    final materials = widget.model.materials;
+    final List<dynamic> tools = materials['tools'] ?? [];
 
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'SPECIFICATIONS',
+            style: TextStyle(
+              fontSize: 10,
+              color: settings.textColor.withOpacity(0.4),
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Details Title
-              const Text(
-                'SPECIFICATIONS',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.white38,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Attributes grid/row list
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildAttributeItem('Dimensions', data.dimensions, Icons.zoom_out_map),
-                  _buildAttributeItem('Estimated Time', data.estimatedTime, Icons.timer),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _buildAttributeItem('Texture Standard', data.texture, Icons.texture),
-
-              const SizedBox(height: 14),
-              // Tips block
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.lightbulb, size: 14, color: settings.primaryColor),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Expert Tip',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        data.tips,
-                        style: const TextStyle(fontSize: 10, color: Colors.white54, height: 1.4),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Bottom [Continue] Button
-              SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: settings.primaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 4,
-                  ),
-                  onPressed: () {
-                    // Close the detail overlay
-                    Navigator.of(context).pop();
-
-                    // Push the practice viewer screen
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => PracticeViewerScreen(
-                          modelName: widget.model.title,
-                          paperColor: settings.paperColor,
-                          totalSteps: data.totalSteps,
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Continue to Fold',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                ),
-              ),
+              _buildAttributeItem(settings, 'Dimensions', materials['paper_size'] ?? '15x15 cm', Icons.zoom_out_map),
+              _buildAttributeItem(settings, 'Paper Type', materials['paper_type'] ?? 'Standard Paper', Icons.description),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 12),
+          _buildAttributeItem(
+            settings,
+            'Required Tools',
+            tools.isEmpty ? 'None' : tools.join(', '),
+            Icons.construction,
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: settings.textColor.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: settings.textColor.withOpacity(0.08)),
+              ),
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  Text(
+                    widget.model.description,
+                    style: TextStyle(fontSize: 10, color: settings.textColor.withOpacity(0.6), height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Download progress or Continue button
+          _isDownloading
+              ? Column(
+                  children: [
+                    LinearProgressIndicator(
+                      value: _downloadProgress,
+                      backgroundColor: settings.textColor.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(settings.primaryColor),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _statusText,
+                      style: TextStyle(fontSize: 10, color: settings.textColor.withOpacity(0.6)),
+                    ),
+                  ],
+                )
+              : SizedBox(
+                  height: 40,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: settings.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 4,
+                    ),
+                    onPressed: () => _handleContinue(provider),
+                    child: Text(
+                      provider.isModelDownloaded(widget.model.id) ? 'Continue to Fold' : 'Download and Fold',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ),
+        ],
+      ),
     );
   }
 
-  Widget _buildAttributeItem(String label, String value, IconData icon) {
+  Widget _buildAttributeItem(AppSettingsProvider settings, String label, String value, IconData icon) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, size: 12, color: Colors.white38),
+            Icon(icon, size: 12, color: settings.textColor.withOpacity(0.4)),
             const SizedBox(width: 4),
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: Colors.white38),
+              style: TextStyle(fontSize: 10, color: settings.textColor.withOpacity(0.4)),
             ),
           ],
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 11, color: settings.textColor.withOpacity(0.8), fontWeight: FontWeight.w600),
         ),
       ],
     );
