@@ -29,7 +29,7 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
   int _currentStepIndex = 0; // Starts from Index 0
   bool _isControlsVisible = true;
   double _instructionHeight = 70.0; // Dynamic height for chevron sizing
-  String? _discoveredGlbPath;
+  String? _base64GlbDataUri;
 
   // Simulated 3D angles for normal steps (if orbiting is used)
   double _rotationX = -15.0;
@@ -55,20 +55,8 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
         _steps = parsed;
       }
 
-      // 2. Scan dynamically for first GLB file ending in .glb or .GLB
-      final dir = Directory(Uri.decodeFull(widget.modelDir));
-      if (await dir.exists()) {
-        final entities = await dir.list().toList();
-        for (final entity in entities) {
-          if (entity is File) {
-            final path = entity.path.toLowerCase();
-            if (path.endsWith('.glb')) {
-              _discoveredGlbPath = entity.path;
-              break;
-            }
-          }
-        }
-      }
+      // 2. Load finish.glb as Base64 Data URI
+      _base64GlbDataUri = await _loadTargetGlbAsBase64(widget.modelDir);
     } catch (e) {
       debugPrint("Error loading steps/GLB: $e");
     } finally {
@@ -78,6 +66,35 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
         });
       }
     }
+  }
+
+  Future<String?> _loadTargetGlbAsBase64(String resolvedBaseDirPath) async {
+    try {
+      final cleanPath = Uri.decodeFull(resolvedBaseDirPath);
+      File glbFile = File("$cleanPath/finish.glb");
+
+      if (!glbFile.existsSync()) {
+        final dir = Directory(cleanPath);
+        if (dir.existsSync()) {
+          final entities = dir.listSync(recursive: true);
+          for (var entity in entities) {
+            if (entity is File && entity.path.toLowerCase().endsWith('finish.glb')) {
+              glbFile = entity;
+              break;
+            }
+          }
+        }
+      }
+
+      if (glbFile.existsSync()) {
+        final List<int> bytes = await glbFile.readAsBytes();
+        final String base64Data = base64Encode(bytes);
+        return 'data:application/octet-stream;base64,$base64Data';
+      }
+    } catch (e) {
+      debugPrint("Error streaming binary glb object: $e");
+    }
+    return null;
   }
 
   void _goToPrevStep() {
@@ -157,8 +174,8 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
     // Viewport layout child
     Widget mainContent;
     if (isFinal3DStage) {
-      mainContent = _discoveredGlbPath != null
-          ? Flutter3DViewer(src: 'file://$_discoveredGlbPath')
+      mainContent = _base64GlbDataUri != null
+          ? Flutter3DViewer(src: _base64GlbDataUri!)
           : Center(child: Text("3D model file not found locally.", style: TextStyle(color: settings.textColor)));
     } else {
       if (_steps.isEmpty) {

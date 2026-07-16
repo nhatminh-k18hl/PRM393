@@ -19,8 +19,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   final List<String> _categories = [
     "Beginner Origami",
-    "Folding Techniques",
-    "Dividing Paper",
     "Intermediate Origami",
     "Origami Decorations",
     "Modular Origami",
