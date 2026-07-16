@@ -20,6 +20,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<String> _categories = [
     "Beginner Origami",
     "Folding Techniques",
+    "Dividing Paper",
     "Intermediate Origami",
     "Origami Decorations",
     "Modular Origami",
@@ -394,7 +395,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   alignment: Alignment.center,
                   children: [
                     Image.asset(
-                      "assets/images/${model.previewImg}.png",
+                      model.assetPath,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Icon(Icons.token, size: 40, color: settings.primaryColor);

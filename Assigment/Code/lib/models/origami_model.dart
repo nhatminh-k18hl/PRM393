@@ -19,6 +19,19 @@ class OrigamiModel {
     required this.materials,
   });
 
+  String get assetPath {
+    switch (previewImg) {
+      case 'folding_paper_3x3_thumb':
+        return 'assets/Beginner Origami/Dividing Paper/Folding Paper into Thirds 3 x 3 Grid.png';
+      case 'rabbit_ear_fold_thumb':
+        return 'assets/Beginner Origami/Folding Techniques/Rabbit Ear Fold/rabbit_ear_fold.png';
+      case 'origami_shield_with_cross_thumb':
+        return 'assets/Easy Origami/Origami Shield With Cross/Origami Shield With Cross.png';
+      default:
+        return 'assets/images/$previewImg.png';
+    }
+  }
+
   factory OrigamiModel.fromJson(Map<String, dynamic> json) {
     return OrigamiModel(
       id: json['id'] as String,

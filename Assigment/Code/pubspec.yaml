@@ -26,6 +26,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/data/origami_database.json
-    - assets/images/folding_paper_3x3_thumb.png
-    - assets/images/rabbit_ear_fold_thumb.png
-    - assets/images/origami_shield_with_cross_thumb.png
+    - assets/Beginner Origami/Dividing Paper/Folding Paper into Thirds 3 x 3 Grid.png
+    - assets/Beginner Origami/Folding Techniques/Rabbit Ear Fold/rabbit_ear_fold.png
+    - assets/Easy Origami/Origami Shield With Cross/Origami Shield With Cross.png

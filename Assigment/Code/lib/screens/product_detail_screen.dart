@@ -229,7 +229,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 border: Border.all(color: settings.primaryColor.withOpacity(0.3)),
               ),
               child: Image.asset(
-                "assets/images/${widget.model.previewImg}.png",
+                widget.model.assetPath,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Icon(Icons.token, size: 38, color: settings.primaryColor);
