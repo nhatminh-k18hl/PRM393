@@ -17,27 +17,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isSettingsOpen = false;
   final TextEditingController _searchController = TextEditingController();
 
-  final List<String> _categories = [
-    "Beginner Origami",
-    "Intermediate Origami",
-    "Origami Decorations",
-    "Modular Origami",
-    "Easy Origami",
-    "Holiday Origami",
-    "Origami Animals",
-    "Traditional Origami",
-    "Origami Boxes",
-    "Origami Clothes",
-    "Origami Stationery",
-    "Origami Flowers",
-    "Origami Food",
-    "Origami Furniture",
-    "Origami Hearts",
-    "Origami Stars",
-    "Origami Toys",
-    "Origami Vehicles"
-  ];
-
   @override
   void dispose() {
     _searchController.dispose();
@@ -298,15 +277,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildCategoryBanner(AppSettingsProvider settings, OrigamiProvider origamiData) {
+    final categories = origamiData.allModels
+        .expand((model) => model.categories)
+        .toSet()
+        .toList()
+      ..sort();
+
     return Container(
       height: 48,
       margin: const EdgeInsets.symmetric(vertical: 2),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: _categories.length,
+        itemCount: categories.length,
         itemBuilder: (context, index) {
-          final cat = _categories[index];
+          final cat = categories[index];
           final isSelected = origamiData.selectedCategories.contains(cat);
           return Padding(
             padding: const EdgeInsets.only(right: 8.0, top: 4, bottom: 4),

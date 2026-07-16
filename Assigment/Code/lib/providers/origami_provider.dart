@@ -90,9 +90,9 @@ class OrigamiProvider with ChangeNotifier {
           model.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           model.description.toLowerCase().contains(_searchQuery.toLowerCase());
 
-      // 2. Multi-tag AND filter matching: must encompass ALL tags in selectedCategories
+      // 2. Multi-tag ANY (OR) filter matching
       final matchesCategories = _selectedCategories.isEmpty ||
-          _selectedCategories.every((tag) => model.categories.contains(tag));
+          _selectedCategories.any((tag) => model.categories.contains(tag));
 
       // 3. Downloaded only filter constraint
       final matchesDownloadOnly = !_filterDownloadedOnly || isModelDownloaded(model.id);

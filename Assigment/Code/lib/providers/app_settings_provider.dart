@@ -64,7 +64,7 @@ extension AppThemeExtension on AppTheme {
 }
 
 class AppSettingsProvider with ChangeNotifier {
-  AppTheme _activeTheme = AppTheme.DARK_SLATE;
+  AppTheme _activeTheme = AppTheme.LIGHT_CLASSIC;
   String _currentFont = 'Verdana';
   double _globalScale = 1.0;
 
@@ -126,7 +126,7 @@ class AppSettingsProvider with ChangeNotifier {
   }
 
   Future<void> resetToDefaults() async {
-    _activeTheme = AppTheme.DARK_SLATE;
+    _activeTheme = AppTheme.LIGHT_CLASSIC;
     _currentFont = 'Verdana';
     _globalScale = 1.0;
     notifyListeners();
