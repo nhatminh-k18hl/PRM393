@@ -117,3 +117,7 @@ app.*.symbols
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
+Assigment/.ai_rules.md
+Assigment/Code/analysis_options.yaml
+Assigment/Code/.metadata
+Assigment/Code/android/app/build.gradle.kts

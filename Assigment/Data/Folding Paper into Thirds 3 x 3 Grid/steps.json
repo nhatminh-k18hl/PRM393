@@ -1,0 +1,72 @@
+[
+  {
+    "step_number": 1,
+    "image_file": "step_1_origami_3x3-removebg-preview.png",
+    "instruction": "This is the front of the paper, your divider will end up being this color."
+  },
+  {
+    "step_number": 2,
+    "image_file": "step_2_origami_3x3-removebg-preview.png",
+    "instruction": "This is the back of the paper, usually white."
+  },
+  {
+    "step_number": 3,
+    "image_file": "step_3_origami_3x3-removebg-preview.png",
+    "instruction": "You will need to divide the paper into thirds. This is the 'S' method, pick up the paper and make it an S shape, until the paper becomes equally divided into thirds."
+  },
+  {
+    "step_number": 4,
+    "image_file": "step_4_origami_3x3-removebg-preview.png",
+    "instruction": "Once it's in three equal sections, make a crease on both edges. Alternatively, get a ruler and measure thirds along the top edge of the paper with pencil."
+  },
+  {
+    "step_number": 5,
+    "image_file": "step_5_origami_3x3-removebg-preview.png",
+    "instruction": "Place the paper back down on the table. You can see the thirds marked on the top edge."
+  },
+  {
+    "step_number": 6,
+    "image_file": "step_6_origami_3x3-removebg-preview.png",
+    "instruction": "Fold the right edge over to the mark on the top left."
+  },
+  {
+    "step_number": 7,
+    "image_file": "step_7_origami_3x3-removebg-preview.png",
+    "instruction": "Unfold the previous step."
+  },
+  {
+    "step_number": 8,
+    "image_file": "step_8_origami_3x3-removebg-preview.png",
+    "instruction": "Fold the left edge over to the crease you made in the previous step."
+  },
+  {
+    "step_number": 9,
+    "image_file": "step_9_origami_3x3-removebg-preview.png",
+    "instruction": "Unfold the previous step."
+  },
+  {
+    "step_number": 10,
+    "image_file": "step_10_origami_3x3-removebg-preview.png",
+    "instruction": "Next, fold the bottom right corner diagonally, aligning with the right vertical crease."
+  },
+  {
+    "step_number": 11,
+    "image_file": "step_11_origami_3x3-removebg-preview.png",
+    "instruction": "Fold the top edge down to align with the top of the flap you created in the previous step."
+  },
+  {
+    "step_number": 12,
+    "image_file": "step_12_origami_3x3-removebg-preview.png",
+    "instruction": "Unfold both the top and lower diagonal flap."
+  },
+  {
+    "step_number": 13,
+    "image_file": "step_13_origami_3x3-removebg-preview.png",
+    "instruction": "Fold the bottom edge up to the horizontal crease you made in the previous step."
+  },
+  {
+    "step_number": 14,
+    "image_file": "step_14_origami_3x3-removebg-preview.png",
+    "instruction": "Unfold the paper. You now have a grid of 3 by 3, or 9 equal sections."
+  }
+]

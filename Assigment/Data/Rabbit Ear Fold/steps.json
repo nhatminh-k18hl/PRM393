@@ -1,0 +1,47 @@
+[
+  {
+    "step_number": 1,
+    "image_file": "step_1_rabbit_ear_fold.png",
+    "instruction": "Start with your paper like this."
+  },
+  {
+    "step_number": 2,
+    "image_file": "step_2_rabbit_ear_fold.png",
+    "instruction": "Fold the top point down to the bottom point."
+  },
+  {
+    "step_number": 3,
+    "image_file": "step_3_rabbit_ear_fold.png",
+    "instruction": "Unfold the previous step."
+  },
+  {
+    "step_number": 4,
+    "image_file": "step_4_rabbit_ear_fold.png",
+    "instruction": "Take the top right diagonal edge and fold it down, aligning with the crease you made in step 2."
+  },
+  {
+    "step_number": 5,
+    "image_file": "step_5_rabbit_ear_fold.png",
+    "instruction": "Unfold the previous step."
+  },
+  {
+    "step_number": 6,
+    "image_file": "step_6_rabbit_ear_fold.png",
+    "instruction": "Repeat the same fold on the top left diagonal edge."
+  },
+  {
+    "step_number": 7,
+    "image_file": "step_7_rabbit_ear_fold.png",
+    "instruction": "Unfold the previous step."
+  },
+  {
+    "step_number": 8,
+    "image_file": "step_8_rabbit_ear_fold.png",
+    "instruction": "Create a new vertical valley fold at the top whilst pushing top left and right edges forward."
+  },
+  {
+    "step_number": 9,
+    "image_file": "step_9_rabbit_ear_fold.png",
+    "instruction": "Flatten the paper like this."
+  }
+]

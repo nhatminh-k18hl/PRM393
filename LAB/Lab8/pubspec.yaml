@@ -1,0 +1,20 @@
+name: lab8
+description: "Bài thực hành Lab 8: Building an API-powered List Screen"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0 # Tải thư viện Http hỗ trợ gọi REST API
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+
+flutter:
+  uses-material-design: true

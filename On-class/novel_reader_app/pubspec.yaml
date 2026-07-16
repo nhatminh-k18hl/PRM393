@@ -1,0 +1,33 @@
+name: novel_reader_app
+description: "A highly optimized Novel Reader Application with custom smart scroll, intersection tag filtering, and localized blurred settings overlays."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  # Thư viện lưu trữ Local Storage hỗ trợ lưu Bookmark và Giao diện toàn app
+  shared_preferences: ^2.2.2
+  google_fonts: ^8.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Khai báo chính xác hệ thống tài nguyên ảnh bìa Offline của dự án
+  assets:
+    - assets/images/ho-diep-va-kinh-ngu.png
+    - assets/images/ngo-ngo-dong.png
+    - assets/images/ha-thanh-hai-yen-ngang-qua-ngo-nho-binh-an.jpg
+    # Đăng ký nguyên thư mục chứa các file .txt của từng truyện
+    - db/ho-diep-va-kinh-ngu/
+    - db/ngo-ngo-dong/
+    - db/ha-thanh-hai-yen/

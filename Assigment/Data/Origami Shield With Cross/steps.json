@@ -1,0 +1,62 @@
+[
+  {
+    "step_number": 1,
+    "image_file": "step_1_origami_3x3-removebg-preview.png",
+    "instruction": "This is the front of our paper, the background of the shield will end up this colour."
+  },
+  {
+    "step_number": 2,
+    "image_file": "step_2_origami_3x3-removebg-preview.png",
+    "instruction": "This is the back of our origami paper, this colour will become the shape of the cross."
+  },
+  {
+    "step_number": 3,
+    "image_file": "step_3_origami_3x3-removebg-preview.png",
+    "instruction": "Fold the paper up in half."
+  },
+  {
+    "step_number": 4,
+    "image_file": "step_4_origami_3x3-removebg-preview.png",
+    "instruction": "Unfold the previous step."
+  },
+  {
+    "step_number": 5,
+    "image_file": "step_5_origami_3x3-removebg-preview.png",
+    "instruction": "Fold the right side over to the left side."
+  },
+  {
+    "step_number": 6,
+    "image_file": "step_6_origami_3x3-removebg-preview.png",
+    "instruction": "Unfold the previous step."
+  },
+  {
+    "step_number": 7,
+    "image_file": "step_7_origami_3x3-removebg-preview.png",
+    "instruction": "Using the creases as guidelines, fold one of the corner to the middle, leaving a small gap."
+  },
+  {
+    "step_number": 8,
+    "image_file": "step_8_origami_3x3-removebg-preview.png",
+    "instruction": "Fold the rest of the corners in to match the first one."
+  },
+  {
+    "step_number": 9,
+    "image_file": "step_9_origami_3x3-removebg-preview.png",
+    "instruction": "Next, fold the the top edge over to the back. You can decide upon the positioning of this fold."
+  },
+  {
+    "step_number": 10,
+    "image_file": "step_10_origami_3x3-removebg-preview.png",
+    "instruction": "Fold the left and right sides behind as well."
+  },
+  {
+    "step_number": 11,
+    "image_file": "step_11_origami_3x3-removebg-preview.png",
+    "instruction": "Here is the back of the paper."
+  },
+  {
+    "step_number": 12,
+    "image_file": "step_12_origami_3x3-removebg-preview.png",
+    "instruction": "You can fold the top left and right points and the bottom edge behind a little to round out your shield."
+  }
+]

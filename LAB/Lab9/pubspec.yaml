@@ -1,0 +1,24 @@
+name: lab9
+description: "Bài thực hành Lab 9: Working with Local JSON Storage"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.1.1 # Thư viện bắt buộc để tìm đường dẫn bộ nhớ ẩn của thiết bị
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+
+flutter:
+  uses-material-design: true
+
+  # Khai báo file asset để hệ thống cấp quyền đọc rootBundle
+  assets:
+    - assets/initial_notes.json
