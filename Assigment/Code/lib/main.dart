@@ -4,10 +4,14 @@ import 'package:provider/provider.dart';
 import 'providers/app_settings_provider.dart';
 import 'providers/origami_provider.dart';
 import 'screens/splash_screen.dart';
+import 'services/local_server_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Start local HTTP server for serving 3D models and assets
+  await LocalServerService().startServer();
+
   // Force strict orientation lock (landscapeLeft & landscapeRight)
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,

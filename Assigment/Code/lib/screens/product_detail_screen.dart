@@ -1,17 +1,22 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:archive/archive.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:dio/dio.dart';
-import 'package:archive/archive.dart';
+import '../models/origami_model.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/origami_provider.dart';
-import '../models/origami_model.dart';
 import 'practice_viewer_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final OrigamiModel model;
 
-  const ProductDetailScreen({Key? key, required this.model}) : super(key: key);
+  const ProductDetailScreen({
+    Key? key,
+    required this.model,
+  }) : super(key: key);
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -19,14 +24,45 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _isLoadingSpecs = true;
-  double _downloadProgress = 0.0;
   bool _isDownloading = false;
+  double _downloadProgress = 0.0;
   String _statusText = '';
+
+  List<ConnectivityResult> _connectivityResults = [];
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     _simulateLoadingSpecs();
+    _initConnectivity();
+  }
+
+  Future<void> _initConnectivity() async {
+    try {
+      final results = await Connectivity().checkConnectivity();
+      if (mounted) {
+        setState(() {
+          _connectivityResults = results;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error checking connectivity: $e");
+    }
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+      if (mounted) {
+        setState(() {
+          _connectivityResults = results;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _simulateLoadingSpecs() async {
@@ -45,6 +81,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (isDownloaded) {
       _navigateToViewer(provider.getActualBaseDir(widget.model.id));
     } else {
+      // Check network connectivity before starting download
+      final connectivityResults = await Connectivity().checkConnectivity();
+      final isOffline = connectivityResults.contains(ConnectivityResult.none) ||
+          connectivityResults.isEmpty;
+
+      if (isOffline) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Connection required to download package.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
+
       setState(() {
         _isDownloading = true;
         _downloadProgress = 0.0;
@@ -126,82 +179,128 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  Widget _buildNetworkWarningBanner(bool isDownloaded) {
+    if (isDownloaded) return const SizedBox.shrink();
+
+    final isOffline = _connectivityResults.contains(ConnectivityResult.none) ||
+        _connectivityResults.isEmpty;
+    final isMobile = _connectivityResults.contains(ConnectivityResult.mobile);
+
+    if (isOffline) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 6.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_off, size: 12, color: Colors.redAccent),
+            SizedBox(width: 4),
+            Text(
+              "You are currently offline.",
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (isMobile) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 6.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.warning_amber_rounded, size: 12, color: Colors.amber),
+            SizedBox(width: 4),
+            Text(
+              "Warning: You are using mobile data.",
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.amber,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<AppSettingsProvider>(context);
     final origamiData = Provider.of<OrigamiProvider>(context);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.black54,
       body: Stack(
         children: [
-          // Dismiss on tapping outside
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                color: Colors.transparent,
-              ),
-            ),
+          // Dismiss safe margin area
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(color: Colors.transparent),
           ),
 
-          // Central modal content
+          // Center Detail Dialog
           Center(
             child: Container(
               width: 580,
-              height: 330,
-              margin: const EdgeInsets.symmetric(horizontal: 24),
+              height: 320,
+              margin: const EdgeInsets.symmetric(horizontal: 40),
               decoration: BoxDecoration(
                 color: settings.backgroundColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: settings.textColor.withOpacity(0.12),
-                  width: 1.5,
-                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
-                    blurRadius: 30,
-                    offset: const Offset(0, 8),
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 20,
+                    spreadRadius: 5,
                   )
                 ],
               ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                children: [
-                  Row(
-                    children: [
-                      // Left Column: Visual summary
-                      _buildLeftColumn(settings),
-                      // Divider line
-                      Container(
-                        width: 1,
-                        height: double.infinity,
-                        color: settings.textColor.withOpacity(0.08),
-                      ),
-                      // Right Column: Info specs
-                      Expanded(
-                        child: _buildRightColumn(settings, origamiData),
-                      ),
-                    ],
-                  ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Stack(
+                  children: [
+                    Row(
+                      children: [
+                        // Left Column: Visual summary
+                        _buildLeftColumn(settings),
+                        // Divider line
+                        Container(
+                          width: 1,
+                          height: double.infinity,
+                          color: settings.textColor.withOpacity(0.08),
+                        ),
+                        // Right Column: Info specs
+                        Expanded(
+                          child: _buildRightColumn(settings, origamiData),
+                        ),
+                      ],
+                    ),
 
-                  // Close button [X] inside the card
-                  Positioned(
-                    top: 14,
-                    left: 14,
-                    child: Material(
-                      color: Colors.black38,
-                      shape: const CircleBorder(),
-                      child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white70, size: 18),
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        padding: EdgeInsets.zero,
-                        onPressed: () => Navigator.of(context).pop(),
+                    // Close button [X] inside the card
+                    Positioned(
+                      top: 14,
+                      left: 14,
+                      child: Material(
+                        color: Colors.black38,
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -284,6 +383,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     final materials = widget.model.materials;
     final List<dynamic> tools = materials['tools'] ?? [];
+    final isDownloaded = provider.isModelDownloaded(widget.model.id);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
@@ -334,7 +434,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Inline Network Warning Banner
+          _buildNetworkWarningBanner(isDownloaded),
 
           // Download progress or Continue button
           _isDownloading
@@ -354,6 +457,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 )
               : SizedBox(
                   height: 40,
+                  width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: settings.primaryColor,
@@ -365,7 +469,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                     onPressed: () => _handleContinue(provider),
                     child: Text(
-                      provider.isModelDownloaded(widget.model.id) ? 'Continue to Fold' : 'Download and Fold',
+                      isDownloaded ? 'Continue to Fold' : 'Download and Fold',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ),

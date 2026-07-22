@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_settings_provider.dart';
-import 'dashboard_screen.dart';
+import '../services/local_server_service.dart';
 
 class PracticeViewerScreen extends StatefulWidget {
   final String modelId;
@@ -28,7 +28,7 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
   bool _isLoadingSteps = true;
   int _currentStepIndex = 0; // Starts from Index 0
   bool _isControlsVisible = true;
-  double _instructionHeight = 70.0; // Dynamic height for chevron sizing
+  double _instructionHeight = 48.0; // Dynamic height for chevron sizing
   String? _base64GlbDataUri;
 
   // Simulated 3D angles for normal steps (if orbiting is used)
@@ -55,7 +55,7 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
         _steps = parsed;
       }
 
-      // 2. Load finish.glb as Base64 Data URI
+      // 2. Load finish.glb as Base64 Data URI (fallback)
       _base64GlbDataUri = await _loadTargetGlbAsBase64(widget.modelDir);
     } catch (e) {
       debugPrint("Error loading steps/GLB: $e");
@@ -89,7 +89,7 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
       if (glbFile.existsSync()) {
         final List<int> bytes = await glbFile.readAsBytes();
         final String base64Data = base64Encode(bytes);
-        return 'data:application/octet-stream;base64,$base64Data';
+        return 'data:model/gltf-binary;base64,$base64Data';
       }
     } catch (e) {
       debugPrint("Error streaming binary glb object: $e");
@@ -147,10 +147,7 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
   }
 
   void _backToHome() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      (route) => false,
-    );
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
@@ -174,9 +171,19 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
     // Viewport layout child
     Widget mainContent;
     if (isFinal3DStage) {
-      mainContent = _base64GlbDataUri != null
-          ? Flutter3DViewer(src: _base64GlbDataUri!)
-          : Center(child: Text("3D model file not found locally.", style: TextStyle(color: settings.textColor)));
+      final serverBaseUrl = LocalServerService().baseUrl;
+      final httpModelUrl = serverBaseUrl.isNotEmpty
+          ? '$serverBaseUrl/models/${widget.modelId}/finish.glb'
+          : (_base64GlbDataUri ?? '');
+
+      mainContent = httpModelUrl.isNotEmpty
+          ? Flutter3DViewer(
+              key: ValueKey('${widget.modelId}-$_currentStepIndex'),
+              src: httpModelUrl,
+            )
+          : Center(
+              child: Text("3D model file not found locally.", style: TextStyle(color: settings.textColor)),
+            );
     } else {
       if (_steps.isEmpty) {
         mainContent = Center(child: Text('No instruction steps found.', style: TextStyle(color: settings.textColor)));
@@ -245,7 +252,7 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
         },
         child: Stack(
           children: [
-            // Background Canvas Grid Pattern
+            // Child 1: Background Canvas Grid Pattern
             Positioned.fill(
               child: Container(
                 color: settings.backgroundColor,
@@ -255,7 +262,7 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
               ),
             ),
 
-            // Step Content Display
+            // Child 2: Step Content Display (contains Flutter3DViewer on final step)
             Positioned.fill(
               child: Center(
                 child: Padding(
@@ -265,7 +272,7 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
               ),
             ),
 
-            // Bounding Gesture Division Layers
+            // Child 3: Bounding Gesture Division Layers
             Positioned.fill(
               child: Row(
                 children: [
@@ -328,189 +335,216 @@ class _PracticeViewerScreenState extends State<PracticeViewerScreen> {
               ),
             ),
 
-            // HEADER INFO BAR overlay
+            // Child 4: BOTTOM OPTIONS & EXPANDABLE GUIDE PANEL overlay
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 250),
+              bottom: _isControlsVisible ? 6 : -140,
+              left: 16,
+              right: 16,
+              child: SafeArea(
+                top: false,
+                left: true,
+                right: true,
+                bottom: true,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Compact Instruction Box with Horizontal Scroll
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        height: _instructionHeight,
+                        decoration: BoxDecoration(
+                          color: settings.backgroundColor.withOpacity(0.95),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: settings.textColor.withOpacity(0.1)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.25),
+                              blurRadius: 8,
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(Icons.menu_book, color: settings.primaryColor, size: 16),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                child: Text(
+                                  isFinal3DStage
+                                      ? "Congratulations! You have completed folding the model. Tap the home icon to return."
+                                      : (_steps.isNotEmpty ? _steps[_currentStepIndex]['instruction'] ?? '' : ''),
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: settings.textColor.withOpacity(0.8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () {
+                                    setState(() {
+                                      _instructionHeight = math.min(100.0, _instructionHeight + 20.0);
+                                    });
+                                  },
+                                  child: Icon(Icons.keyboard_arrow_up, size: 14, color: settings.primaryColor),
+                                ),
+                                const SizedBox(height: 2),
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () {
+                                    setState(() {
+                                      _instructionHeight = math.max(42.0, _instructionHeight - 20.0);
+                                    });
+                                  },
+                                  child: Icon(Icons.keyboard_arrow_down, size: 14, color: settings.primaryColor),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Footer control bar
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        height: 46,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton.icon(
+                              icon: const Icon(Icons.rotate_left, size: 14, color: Colors.white70),
+                              label: const Text('Reset Angle', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                              onPressed: () {
+                                setState(() {
+                                  _rotationX = -15.0;
+                                  _rotationY = 45.0;
+                                });
+                              },
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.skip_previous, size: 18, color: Colors.white54),
+                                  onPressed: _goToPrevStep,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  isFinal3DStage
+                                      ? 'Final Showcase'
+                                      : 'Step ${_currentStepIndex + 1} / $total2DSteps',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.skip_next, size: 18, color: Colors.white),
+                                  onPressed: _goToNextStep,
+                                ),
+                              ],
+                            ),
+                            Text(
+                              'Drag edge to Orbit',
+                              style: TextStyle(color: settings.textColor.withOpacity(0.38), fontSize: 9, fontStyle: FontStyle.italic),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Child 5: HEADER INFO BAR overlay (LAST CHILD inside Stack to render visually on top)
             AnimatedPositioned(
               duration: const Duration(milliseconds: 250),
               top: _isControlsVisible ? 0 : -80,
               left: 0,
               right: 0,
-              child: Container(
-                height: 54,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.black.withOpacity(0.75), Colors.transparent],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  height: 54,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.black.withOpacity(0.85), Colors.transparent],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                   ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.modelName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        if (isFinal3DStage)
-                          TextButton.icon(
-                            onPressed: _backToHome,
-                            icon: Icon(Icons.home, size: 16, color: settings.primaryColor),
-                            label: Text(
-                              'Trở về Trang chủ',
-                              style: TextStyle(color: settings.primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                            onPressed: () => Navigator.of(context).pop(),
                           ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: settings.primaryColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: settings.primaryColor.withOpacity(0.4), width: 1),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.modelName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
                           ),
-                          child: Text(
-                            isFinal3DStage ? '3D Stage' : 'Step ${_currentStepIndex + 1} / $total2DSteps',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // BOTTOM OPTIONS & EXPANDABLE GUIDE PANEL overlay
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 250),
-              bottom: _isControlsVisible ? 0 : -140,
-              left: 0,
-              right: 0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Expandable Instruction Box
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    height: _instructionHeight,
-                    decoration: BoxDecoration(
-                      color: settings.backgroundColor.withOpacity(0.92),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: settings.textColor.withOpacity(0.1)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                        )
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.menu_book, color: settings.primaryColor, size: 18),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Text(
-                              isFinal3DStage
-                                  ? "Congratulations! You have completed folding the model. Tap the home icon to return."
-                                  : (_steps.isNotEmpty ? _steps[_currentStepIndex]['instruction'] ?? '' : ''),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: settings.textColor.withOpacity(0.8),
-                                height: 1.35,
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          if (isFinal3DStage)
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: _backToHome,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.home, size: 16, color: settings.primaryColor),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Trở về Trang chủ',
+                                      style: TextStyle(color: settings.primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: settings.primaryColor.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: settings.primaryColor.withOpacity(0.4), width: 1),
+                            ),
+                            child: Text(
+                              isFinal3DStage ? '3D Stage' : 'Step ${_currentStepIndex + 1} / $total2DSteps',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _instructionHeight = math.min(150.0, _instructionHeight + 30.0);
-                                });
-                              },
-                              child: Icon(Icons.keyboard_arrow_up, size: 16, color: settings.primaryColor),
-                            ),
-                            const SizedBox(height: 4),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _instructionHeight = math.max(44.0, _instructionHeight - 30.0);
-                                });
-                              },
-                              child: Icon(Icons.keyboard_arrow_down, size: 16, color: settings.primaryColor),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-
-                  // Footer control bar
-                  Container(
-                    color: Colors.black.withOpacity(0.8),
-                    height: 52,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton.icon(
-                          icon: const Icon(Icons.rotate_left, size: 16, color: Colors.white70),
-                          label: const Text('Reset Angle', style: TextStyle(fontSize: 11, color: Colors.white70)),
-                          onPressed: () {
-                            setState(() {
-                              _rotationX = -15.0;
-                              _rotationY = 45.0;
-                            });
-                          },
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.skip_previous, color: Colors.white54),
-                              onPressed: _goToPrevStep,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              isFinal3DStage
-                                  ? 'Final Showcase'
-                                  : 'Step ${_currentStepIndex + 1} / $total2DSteps',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                            const SizedBox(width: 12),
-                            IconButton(
-                              icon: const Icon(Icons.skip_next, color: Colors.white),
-                              onPressed: _goToNextStep,
-                            ),
-                          ],
-                        ),
-                        Text(
-                          'Drag edge to Orbit',
-                          style: TextStyle(color: settings.textColor.withOpacity(0.38), fontSize: 9, fontStyle: FontStyle.italic),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],

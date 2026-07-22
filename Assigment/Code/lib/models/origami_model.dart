@@ -44,4 +44,17 @@ class OrigamiModel {
       materials: Map<String, dynamic>.from(json['materials'] as Map),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'difficulty': difficulty,
+      'categories': categories,
+      'preview_img': previewImg,
+      'download_url': downloadUrl,
+      'materials': materials,
+    };
+  }
 }

@@ -7,6 +7,7 @@ import '../models/origami_model.dart';
 
 class OrigamiProvider with ChangeNotifier {
   List<OrigamiModel> _allModels = [];
+  List<OrigamiModel> _customModels = [];
   bool _isLoading = true;
   String _searchQuery = '';
   List<String> _selectedCategories = [];
@@ -33,12 +34,56 @@ class OrigamiProvider with ChangeNotifier {
       final jsonString = await rootBundle.loadString('assets/data/origami_database.json');
       final List<dynamic> jsonList = jsonDecode(jsonString);
       _allModels = jsonList.map((j) => OrigamiModel.fromJson(j)).toList();
+
+      // Load custom models added by user
+      await _loadCustomModels();
     } catch (e) {
       debugPrint("Error loading origami database: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _loadCustomModels() async {
+    if (_appDocDirPath == null) return;
+    try {
+      final customFile = File('$_appDocDirPath/custom_models.json');
+      if (customFile.existsSync()) {
+        final content = await customFile.readAsString();
+        final List<dynamic> jsonList = jsonDecode(content);
+        _customModels = jsonList.map((j) => OrigamiModel.fromJson(j)).toList();
+        _allModels.addAll(_customModels);
+      }
+    } catch (e) {
+      debugPrint("Error loading custom models: $e");
+    }
+  }
+
+  Future<void> _saveCustomModels() async {
+    if (_appDocDirPath == null) return;
+    try {
+      final customFile = File('$_appDocDirPath/custom_models.json');
+      final jsonList = _customModels.map((m) => m.toJson()).toList();
+      await customFile.writeAsString(jsonEncode(jsonList));
+    } catch (e) {
+      debugPrint("Error saving custom models: $e");
+    }
+  }
+
+  Future<void> addCustomModel(OrigamiModel newModel) async {
+    _customModels.add(newModel);
+    _allModels.add(newModel);
+    await _saveCustomModels();
+    notifyListeners();
+  }
+
+  Future<void> deleteCustomModel(String id) async {
+    _customModels.removeWhere((m) => m.id == id);
+    _allModels.removeWhere((m) => m.id == id);
+    await pruneModelCache(id);
+    await _saveCustomModels();
+    notifyListeners();
   }
 
   bool isModelDownloaded(String id) {

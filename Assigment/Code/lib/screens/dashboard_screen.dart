@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/origami_provider.dart';
 import '../models/origami_model.dart';
+import 'add_origami_dialog.dart';
 import 'product_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -30,6 +31,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final visibleModels = origamiData.visibleOrigamis;
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (_) => const AddOrigamiDialog(),
+          );
+        },
+        backgroundColor: settings.primaryColor,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text('Add Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+      ),
       body: Stack(
         children: [
           // Background canvas
